@@ -120,13 +120,10 @@ const CSS = `
   .done{text-align:center;padding:8px 0}
   .done .big{font-size:44px}.done .who{font-size:20px;font-weight:800;margin:6px 0}
   .done .ans{background:#FFFDFB;border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:16px}
-  .grid{display:flex;flex-wrap:wrap;gap:16px;margin:4px 0}
-  .gword{position:relative;display:inline-flex}
-  .gboxes{display:flex;gap:6px;pointer-events:none}
-  .gbox{width:44px;height:52px;border:2px solid var(--line);border-radius:10px;background:#FFFDFB;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
-  .gbox.active{border-color:var(--brand)}
-  .ginput{position:absolute;inset:0;width:100%;height:100%;background:transparent;border:none;color:transparent;caret-color:transparent;font-size:26px;padding:0}
-  .ginput:focus{outline:none}
+  .grid{display:flex;flex-wrap:wrap;gap:20px;margin:4px 0}   /* 단어 사이 간격 = 띄어쓰기 */
+  .gword{display:flex;gap:6px}                                /* 한 단어 안 글자 칸 사이 */
+  .gcell{width:46px;height:54px;text-align:center;font-size:26px;font-weight:800;border:2px solid var(--line);border-radius:10px;background:#FFFDFB;color:var(--ink);padding:0}
+  .gcell:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px rgba(255,106,43,.15)}
   .status{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);margin-bottom:12px}
   .status b{color:var(--ink)}
   .scroll{overflow-x:auto}
@@ -151,7 +148,7 @@ const CSS = `
   .dlegend{font-size:11px;color:var(--muted);text-align:center}
   .empty{text-align:center;color:var(--muted);padding:24px 0;font-size:14px}
   a.big-link{display:block;text-align:center;background:#fff;border:1.5px solid var(--brand);color:var(--brand);text-decoration:none;font-weight:800;padding:18px;border-radius:16px;margin-bottom:12px;font-size:18px}
-  @media(max-width:420px){.gbox{width:38px;height:46px;font-size:22px}.tile{width:36px;height:36px;font-size:19px}}
+  @media(max-width:420px){.gcell{width:40px;height:48px;font-size:23px}.tile{width:36px;height:36px;font-size:19px}}
 `;
 
 let TEAM_OPTIONS = '<option value="">조를 선택하세요</option>';
@@ -172,68 +169,78 @@ const PLAY_PAGE =
 <title>참가자 · 도레미 마켓</title><style>${CSS}</style></head><body><div class="wrap">
 <header><h1>🎵 빈칸 채우기</h1><p>글자수·띄어쓰기에 맞춰 채우세요</p></header>
 <div id="banner"></div>
-<div id="form">
-  <div class="card"><div class="label">우리 조</div><select id="team">${TEAM_OPTIONS}</select></div>
-  <div class="card"><div class="label">빈칸 채우기</div><div id="grid" class="grid"></div>
+<div class="card"><div class="label">우리 조</div><select id="team">${TEAM_OPTIONS}</select></div>
+<div id="answer" class="card" style="display:none">
+  <div class="label">빈칸 채우기</div>
+  <div id="gridwrap">
+    <div id="grid" class="grid"></div>
     <button class="btn-main" id="submit" style="margin-top:14px">제출하기</button>
-    <p class="hint">칸 수 = 정답 글자수, 칸 사이 간격 = 띄어쓰기. 모르는 칸은 비워도 돼요.</p></div>
+    <p class="hint">칸을 눌러 한 글자씩 입력하세요. 제출 전엔 아무 칸이나 다시 눌러 고칠 수 있어요. 모르는 칸은 비워도 돼요.</p>
+  </div>
+  <div id="wait" style="display:none"><p class="hint">진행자가 게임을 시작하면 빈칸이 나타나요.</p></div>
 </div>
 <div id="done" class="card" style="display:none"><div class="done">
   <div class="big">✅</div><div class="who" id="dwho"></div><div>제출 완료!</div>
   <div class="ans" id="dans"></div><button class="btn-ghost" id="redo">답 고치기</button></div></div>
 </div>
 <script>
-  var curRound=null, doneRound=null, gridInputs=[];
+  var curRound=null, doneRound=null, renderedRound=null, curShape=[], gridInputs=[];
   function $(id){return document.getElementById(id);}
+  function setBanner(txt,cls){ $('banner').innerHTML='<div class="banner '+(cls||'info')+'">'+txt+'</div>'; }
 
-  // 정답 모양(shape)에 맞춰 빈칸 그리기
+  // 정답 모양(shape=단어별 글자수)에 맞춰 글자 칸을 하나씩 만든다
   function renderGrid(shape){
     var box=$('grid'); box.innerHTML=''; gridInputs=[];
-    shape.forEach(function(len,wi){
-      var word=document.createElement('div'); word.className='gword';
-      var boxes=document.createElement('div'); boxes.className='gboxes';
-      var cells=[];
-      for(var k=0;k<len;k++){ var b=document.createElement('div'); b.className='gbox'; boxes.appendChild(b); cells.push(b); }
-      var inp=document.createElement('input'); inp.type='text'; inp.maxLength=len; inp.className='ginput';
-      function update(){
-        var chars=Array.from(inp.value);
-        cells.forEach(function(c,idx){ c.textContent=chars[idx]||''; if(document.activeElement===inp && idx===Math.min(chars.length,len-1)){c.classList.add('active');}else{c.classList.remove('active');} });
-        if(chars.length>=len){ var nx=gridInputs[wi+1]; if(nx) nx.focus(); }  // 다 채우면 다음 단어로
+    shape.forEach(function(len){
+      var word=document.createElement('div'); word.className='gword';   // 한 단어 묶음
+      for(var k=0;k<len;k++){
+        var inp=document.createElement('input'); inp.type='text'; inp.maxLength=1; inp.className='gcell';
+        inp.addEventListener('focus', function(){ var el=this; setTimeout(function(){ el.select(); },0); }); // 탭하면 글자 선택→바로 고쳐 쓸 수 있음
+        word.appendChild(inp); gridInputs.push(inp);
       }
-      inp.addEventListener('input',update);
-      inp.addEventListener('focus',update);
-      inp.addEventListener('blur',function(){ cells.forEach(function(c){c.classList.remove('active');}); });
-      word.appendChild(boxes); word.appendChild(inp);
-      box.appendChild(word); gridInputs.push(inp);
+      box.appendChild(word);
     });
   }
   function clearGrid(){ $('grid').innerHTML=''; gridInputs=[]; }
 
+  // 조 선택 여부 + 게임 시작 여부 + 제출 여부에 따라 화면 결정
+  function refreshView(){
+    var team=$('team').value;
+    if(!team){ $('answer').style.display='none'; $('done').style.display='none'; setBanner('먼저 우리 조를 선택하세요'); return; }
+    if(curRound!==null && doneRound===curRound){ $('answer').style.display='none'; $('done').style.display='block'; setBanner('제출 완료','ok'); return; }
+    $('done').style.display='none'; $('answer').style.display='block';
+    if(!curRound){ $('gridwrap').style.display='none'; $('wait').style.display='block'; renderedRound=null; clearGrid(); setBanner('진행자가 게임을 시작하면 빈칸이 나타나요'); return; }
+    $('wait').style.display='none'; $('gridwrap').style.display='block';
+    if(renderedRound!==curRound){ renderGrid(curShape); renderedRound=curRound; } // 새 문제일 때만 새로 그림(입력값 보존)
+    setBanner('빈칸을 채워 제출하세요');
+  }
+
   function pollRound(){
     fetch('/api/round').then(function(r){return r.json();}).then(function(d){
-      var banner=$('banner');
-      if(!d.active){ banner.innerHTML='<div class="banner info">진행자가 게임을 시작하면 빈칸이 나타나요.</div>'; curRound=null; clearGrid(); return; }
-      if(d.roundId!==curRound && doneRound!==d.roundId){ curRound=d.roundId; renderGrid(d.shape||[]); $('form').style.display='block'; $('done').style.display='none'; }
-      else { curRound=d.roundId; }
-      banner.innerHTML = (doneRound===d.roundId) ? '<div class="banner ok">제출됨</div>' : '<div class="banner info">게임 진행 중 — 빈칸을 채워 제출하세요</div>';
+      if(d.active){ curRound=d.roundId; curShape=d.shape||[]; } else { curRound=null; curShape=[]; }
+      refreshView();
     }).catch(function(){});
   }
+  $('team').addEventListener('change', refreshView);
 
   $('submit').onclick=function(){
     var team=$('team').value;
     if(!team){ alert('조를 선택하세요.'); return; }
     if(!gridInputs.length){ alert('아직 빈칸이 없어요.'); return; }
-    var answer=gridInputs.map(function(i){return i.value;}).join(' ').trim();
+    // 단어별로 글자를 합치고, 단어 사이는 공백으로 이어 답안 구성
+    var idx=0, words=[];
+    curShape.forEach(function(len){ var w=''; for(var k=0;k<len;k++){ w+=(gridInputs[idx]?gridInputs[idx].value:''); idx++; } words.push(w); });
+    var answer=words.join(' ').trim();
     if(!answer.replace(/\\s/g,'')){ alert('답을 입력하세요.'); return; }
     fetch('/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roundId:curRound,team:team,answer:answer})})
     .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
     .then(function(res){
       if(!res.ok){ alert(res.j.error||'제출 실패'); return; }
       doneRound=curRound; $('dwho').textContent=team; $('dans').textContent='"'+answer+'"';
-      $('form').style.display='none'; $('done').style.display='block';
+      refreshView();
     }).catch(function(){ alert('네트워크 오류로 제출하지 못했어요.'); });
   };
-  $('redo').onclick=function(){ $('form').style.display='block'; $('done').style.display='none'; };
+  $('redo').onclick=function(){ doneRound=null; refreshView(); };  // 칸 값은 그대로 남아 고칠 수 있음
 
   pollRound(); setInterval(pollRound,3000);
 </script></body></html>`;
