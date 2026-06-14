@@ -122,8 +122,8 @@ const CSS = `
   .done .ans{background:#FFFDFB;border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;font-size:16px}
   .grid{display:flex;flex-wrap:wrap;gap:20px;margin:4px 0}   /* 단어 사이 간격 = 띄어쓰기 */
   .gword{display:flex;gap:6px}                                /* 한 단어 안 글자 칸 사이 */
-  .gcell{width:46px;height:54px;text-align:center;font-size:26px;font-weight:800;border:2px solid var(--line);border-radius:10px;background:#FFFDFB;color:var(--ink);padding:0}
-  .gcell:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px rgba(255,106,43,.15)}
+  .grid .gcell{flex:0 0 auto;width:48px;height:56px;text-align:center;font-size:26px;font-weight:800;border:2px solid var(--line);border-radius:10px;background:#FFFDFB;color:var(--ink);padding:0}
+  .grid .gcell:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px rgba(255,106,43,.15)}
   .status{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);margin-bottom:12px}
   .status b{color:var(--ink)}
   .scroll{overflow-x:auto}
@@ -148,7 +148,7 @@ const CSS = `
   .dlegend{font-size:11px;color:var(--muted);text-align:center}
   .empty{text-align:center;color:var(--muted);padding:24px 0;font-size:14px}
   a.big-link{display:block;text-align:center;background:#fff;border:1.5px solid var(--brand);color:var(--brand);text-decoration:none;font-weight:800;padding:18px;border-radius:16px;margin-bottom:12px;font-size:18px}
-  @media(max-width:420px){.gcell{width:40px;height:48px;font-size:23px}.tile{width:36px;height:36px;font-size:19px}}
+  @media(max-width:420px){.grid .gcell{width:42px;height:50px;font-size:23px}.tile{width:36px;height:36px;font-size:19px}}
 `;
 
 let TEAM_OPTIONS = '<option value="">조를 선택하세요</option>';
