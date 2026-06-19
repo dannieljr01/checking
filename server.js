@@ -10,7 +10,7 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-const HOST_CODE = process.env.HOST_CODE || '1234';   // 진행자 암호
+const HOST_CODE = process.env.HOST_CODE || 'banana tree';   // 진행자 암호 (원하는 값으로 변경)
 const TEAM_COUNT = 10;                                // 조 선택지 1~N조
 
 // ===== 정답 (고정) — 노래만 바꾸려면 ANSWER 와 ROWS 를 함께 수정 =====
@@ -123,9 +123,10 @@ const CSS = `
   .done{text-align:center;padding:8px 0}
   .done .big{font-size:44px}.done .who{font-size:20px;font-weight:800;margin:6px 0}
   /* 참가자 번호 칸 */
-  .grid{display:flex;flex-direction:column;gap:16px;align-items:center;margin:4px 0}
-  .row{display:flex;gap:5px;justify-content:center;flex-wrap:wrap}
-  .gcellwrap{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .gridscaler{width:100%;overflow:hidden;position:relative}    /* 화면 폭에 맞춰 축소되는 영역 */
+  .grid{display:flex;flex-direction:column;gap:14px;align-items:center;width:max-content;transform-origin:top left}
+  .row{display:flex;gap:5px;justify-content:center;flex-wrap:nowrap}   /* 한 줄 절대 안 깨짐 */
+  .gcellwrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex:0 0 auto}
   .grid.revealed .gcellwrap.wordend{margin-right:22px}        /* 공개 시 단어 끝에 틈 */
   .gnum{font-size:10px;color:var(--muted);line-height:1;font-weight:700}
   .grid .gcell{flex:0 0 auto;width:40px;height:48px;text-align:center;font-size:23px;font-weight:800;border:2px solid var(--line);border-radius:10px;background:#FFFDFB;color:var(--ink);padding:0}
@@ -157,7 +158,7 @@ const CSS = `
   .mcorr{font-size:9px;color:var(--ok-fg);line-height:1;font-weight:800}          /* 정답 글자 작게 */
   .empty{text-align:center;color:var(--muted);padding:24px 0;font-size:14px}
   a.big-link{display:block;text-align:center;background:#fff;border:1.5px solid var(--brand);color:var(--brand);text-decoration:none;font-weight:800;padding:18px;border-radius:16px;margin-bottom:12px;font-size:18px}
-  @media(max-width:420px){.grid .gcell{width:34px;height:42px;font-size:20px}.mcell{width:27px;height:27px;font-size:14px}}
+  @media(max-width:420px){.mcell{width:27px;height:27px;font-size:14px}}
 `;
 
 let TEAM_OPTIONS = '<option value="">조를 선택하세요</option>';
@@ -182,7 +183,7 @@ const PLAY_PAGE =
 <div id="answer" class="card" style="display:none">
   <div class="label">빈칸 채우기</div>
   <div id="gridwrap">
-    <div id="grid" class="grid"></div>
+    <div id="gridscaler"><div id="grid" class="grid"></div></div>
     <button class="btn-main" id="submit" style="margin-top:16px">제출하기</button>
     <p class="hint">칸 위 숫자는 글자 번호예요. 칸을 눌러 한 글자씩 입력하고, 아무 칸이나 다시 눌러 고칠 수 있어요. 모르는 칸은 비워도 돼요.</p>
   </div>
@@ -207,7 +208,8 @@ const PLAY_PAGE =
       var row=document.createElement('div'); row.className='row';
       for(var k=0;k<rowLen;k++){
         num++;
-        var wrap=document.createElement('div'); wrap.className='gcellwrap'+(we[num]?' wordend':'');
+        var isLast=(k===rowLen-1);   // 줄 끝 칸은 틈 불필요(줄바꿈이 구분)
+        var wrap=document.createElement('div'); wrap.className='gcellwrap'+((we[num]&&!isLast)?' wordend':'');
         var lab=document.createElement('div'); lab.className='gnum'; lab.textContent=num;
         var inp=document.createElement('input'); inp.type='text'; inp.maxLength=1; inp.className='gcell';
         inp.addEventListener('focus', function(){ var el=this; setTimeout(function(){el.select();},0); });
@@ -217,15 +219,33 @@ const PLAY_PAGE =
       box.appendChild(row);
     });
     if(revealed) box.classList.add('revealed'); else box.classList.remove('revealed');
+    fitSoon();
   }
   // 공개로 바뀔 때: 입력값 보존하며 틈만 추가
   function applyReveal(){
     var saved=gridInputs.map(function(i){return i.value;});
     renderGrid(curRows, curWordEnds, true);
     gridInputs.forEach(function(inp,idx){ inp.value=saved[idx]||''; });
-    revealedShown=true;
+    revealedShown=true; fitSoon();
   }
   function clearGrid(){ $('grid').innerHTML=''; gridInputs=[]; }
+
+  // 한 줄(10·12·11·11·9·4)을 안 깨지게 두고, 화면 폭에 맞춰 전체 크기를 자동 축소
+  function fitGrid(){
+    var grid=$('grid'), scaler=$('gridscaler');
+    if(!grid||!scaler) return;
+    grid.style.transform='none';                       // 원래 크기로 되돌려 측정
+    var natW=grid.offsetWidth, natH=grid.offsetHeight;
+    if(!natW){ scaler.style.height=''; return; }
+    var avail=scaler.clientWidth;
+    var s=Math.min(1, avail/natW);                      // 넘치면 줄이고, 남으면 1(확대 안 함)
+    grid.style.transform='scale('+s+')';
+    grid.style.marginLeft=Math.max(0,(avail-natW*s)/2)+'px';  // 가운데 정렬
+    scaler.style.height=(natH*s)+'px';                  // 축소된 높이만큼만 자리 차지
+  }
+  function fitSoon(){ if(window.requestAnimationFrame){ requestAnimationFrame(fitGrid); } else { setTimeout(fitGrid,0); } }
+  window.addEventListener('resize', fitGrid);
+  window.addEventListener('orientationchange', function(){ setTimeout(fitGrid,200); });
 
   function refreshView(){
     var team=$('team').value;
