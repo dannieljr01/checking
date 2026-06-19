@@ -10,7 +10,7 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-const HOST_CODE = process.env.HOST_CODE || 'banana tree';   // 진행자 암호 (원하는 값으로 변경)
+const HOST_CODE = process.env.HOST_CODE || 'banana';   // 진행자 암호 (원하는 값으로 변경)
 const TEAM_COUNT = 10;                                // 조 선택지 1~N조
 
 // ===== 정답 (고정) — 노래만 바꾸려면 ANSWER 와 ROWS 를 함께 수정 =====
@@ -192,6 +192,7 @@ const PLAY_PAGE =
 <div id="done" class="card" style="display:none"><div class="done">
   <div class="big">✅</div><div class="who" id="dwho"></div><div>제출 완료!</div>
   <button class="btn-ghost" id="redo">답 고치기</button></div></div>
+<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v2</p>
 </div>
 <script>
   var curRound=null, doneRound=null, renderedRound=null, revealedShown=false;
@@ -243,7 +244,11 @@ const PLAY_PAGE =
     grid.style.marginLeft=Math.max(0,(avail-natW*s)/2)+'px';  // 가운데 정렬
     scaler.style.height=(natH*s)+'px';                  // 축소된 높이만큼만 자리 차지
   }
-  function fitSoon(){ if(window.requestAnimationFrame){ requestAnimationFrame(fitGrid); } else { setTimeout(fitGrid,0); } }
+  function fitSoon(){
+    if(window.requestAnimationFrame){ requestAnimationFrame(fitGrid); } else { setTimeout(fitGrid,0); }
+    setTimeout(fitGrid,250);   // 폰트/레이아웃이 늦게 잡힐 때 한 번 더
+  }
+  window.addEventListener('load', fitGrid);
   window.addEventListener('resize', fitGrid);
   window.addEventListener('orientationchange', function(){ setTimeout(fitGrid,200); });
 
