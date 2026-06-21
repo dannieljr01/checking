@@ -10,7 +10,7 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-const HOST_CODE = process.env.HOST_CODE || 'banana';   // 진행자 암호 (원하는 값으로 변경)
+const HOST_CODE = process.env.HOST_CODE || 'banana';   // 진행자 암호
 const TEAM_COUNT = 8;                                // 조 선택지 1~N조
 
 // ===== 정답 (고정) — 노래만 바꾸려면 ANSWER 와 ROWS 를 함께 수정 =====
@@ -192,7 +192,7 @@ const PLAY_PAGE =
 <div id="done" class="card" style="display:none"><div class="done">
   <div class="big">✅</div><div class="who" id="dwho"></div><div>제출 완료!</div>
   <button class="btn-ghost" id="redo">답 고치기</button></div></div>
-<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v7</p>
+<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v8</p>
 </div>
 <script>
   var curRound=null, doneRound=null, renderedRound=null, revealedShown=false;
@@ -245,9 +245,12 @@ const PLAY_PAGE =
   }
   function clearGrid(){ $('grid').innerHTML=''; gridInputs=[]; }
 
-  // 다음 칸으로 이동 (이미 이동했으면 중복 방지)
+  // 다음 칸으로 이동 — 스페이스 한 번에 keydown/keyup/input이 겹쳐 들어와도 한 칸만 이동
+  var lastNextTs=0;
   function nextCell(el){
-    if(document.activeElement!==el) return;
+    var now=Date.now();
+    if(now-lastNextTs<300) return;        // 직전 이동과 300ms 내면 무시(중복 이벤트 차단)
+    lastNextTs=now;
     var i=gridInputs.indexOf(el);
     if(i>=0 && i<gridInputs.length-1){ gridInputs[i+1].focus(); } else { el.blur(); }
   }
