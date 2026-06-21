@@ -185,14 +185,14 @@ const PLAY_PAGE =
   <div id="gridwrap">
     <div id="gridscaler"><div id="grid" class="grid"></div></div>
     <button class="btn-main" id="submit" style="margin-top:16px">제출하기</button>
-    <p class="hint">칸 위 숫자는 글자 번호예요. 칸을 눌러 한 글자씩 입력하고, 아무 칸이나 다시 눌러 고칠 수 있어요. 모르는 칸은 비워도 돼요.</p>
+    <p class="hint">한 글자 입력하면 자동으로 다음 칸으로 넘어가요. 고치려면 그 칸을 눌러 다시 입력하면 돼요(빈 칸에서 ←백스페이스는 이전 칸으로). 모르는 칸은 비워도 됩니다.</p>
   </div>
   <div id="wait" style="display:none"><p class="hint">진행자가 게임을 시작하면 빈칸이 나타나요.</p></div>
 </div>
 <div id="done" class="card" style="display:none"><div class="done">
   <div class="big">✅</div><div class="who" id="dwho"></div><div>제출 완료!</div>
   <button class="btn-ghost" id="redo">답 고치기</button></div></div>
-<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v2</p>
+<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v3</p>
 </div>
 <script>
   var curRound=null, doneRound=null, renderedRound=null, revealedShown=false;
@@ -213,7 +213,13 @@ const PLAY_PAGE =
         var wrap=document.createElement('div'); wrap.className='gcellwrap'+((we[num]&&!isLast)?' wordend':'');
         var lab=document.createElement('div'); lab.className='gnum'; lab.textContent=num;
         var inp=document.createElement('input'); inp.type='text'; inp.maxLength=1; inp.className='gcell';
+        inp.setAttribute('enterkeyhint','next');
         inp.addEventListener('focus', function(){ var el=this; setTimeout(function(){el.select();},0); });
+        // 한 글자(한글은 조합 완료) 입력되면 자동으로 다음 칸으로
+        inp.addEventListener('input', function(e){ if(e.isComposing) return; if(this.value.length>=1) advanceFrom(this); });
+        inp.addEventListener('compositionend', function(){ if(this.value.length>=1) advanceFrom(this); });
+        // 빈 칸에서 백스페이스 → 이전 칸으로 (수정 편의)
+        inp.addEventListener('keydown', function(e){ if(e.key==='Backspace' && this.value===''){ var i=gridInputs.indexOf(this); if(i>0){ e.preventDefault(); gridInputs[i-1].focus(); } } });
         wrap.appendChild(lab); wrap.appendChild(inp);
         row.appendChild(wrap); gridInputs.push(inp);
       }
@@ -230,6 +236,14 @@ const PLAY_PAGE =
     revealedShown=true; fitSoon();
   }
   function clearGrid(){ $('grid').innerHTML=''; gridInputs=[]; }
+
+  // 한 글자 입력 시 다음 칸으로 이동 (이미 이동했으면 중복 방지)
+  function advanceFrom(el){
+    if(document.activeElement!==el) return;
+    var i=gridInputs.indexOf(el);
+    if(i>=0 && i<gridInputs.length-1){ gridInputs[i+1].focus(); }
+    else { el.blur(); }
+  }
 
   // 한 줄(10·12·11·11·9·4)을 안 깨지게 두고, 화면 폭에 맞춰 전체 크기를 자동 축소
   function fitGrid(){
