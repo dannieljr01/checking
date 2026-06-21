@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 
 const HOST_CODE = process.env.HOST_CODE || 'banana';   // 진행자 암호 (원하는 값으로 변경)
-const TEAM_COUNT = 10;                                // 조 선택지 1~N조
+const TEAM_COUNT = 8;                                // 조 선택지 1~N조
 
 // ===== 정답 (고정) — 노래만 바꾸려면 ANSWER 와 ROWS 를 함께 수정 =====
 const ANSWER =
