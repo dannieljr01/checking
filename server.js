@@ -185,14 +185,14 @@ const PLAY_PAGE =
   <div id="gridwrap">
     <div id="gridscaler"><div id="grid" class="grid"></div></div>
     <button class="btn-main" id="submit" style="margin-top:16px">제출하기</button>
-    <p class="hint">칸을 눌러 한 글자씩 입력하고, <b>스페이스를 누르면 다음 칸</b>으로 넘어가요. 특정 칸을 직접 눌러 고칠 수도 있어요(빈 칸에서 ←백스페이스는 이전 칸으로). 모르는 칸은 비워도 됩니다.</p>
+    <p class="hint">칸을 눌러 한 글자씩 입력하세요. <b>스페이스</b>를 누르면 다음 칸으로 넘어가고, 안 되면 <b>다음 칸을 직접 눌러</b> 입력하면 돼요(빈 칸에서 ←백스페이스는 이전 칸으로). 모르는 칸은 비워도 됩니다.</p>
   </div>
   <div id="wait" style="display:none"><p class="hint">진행자가 게임을 시작하면 빈칸이 나타나요.</p></div>
 </div>
 <div id="done" class="card" style="display:none"><div class="done">
   <div class="big">✅</div><div class="who" id="dwho"></div><div>제출 완료!</div>
   <button class="btn-ghost" id="redo">답 고치기</button></div></div>
-<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v5</p>
+<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v6</p>
 </div>
 <script>
   var curRound=null, doneRound=null, renderedRound=null, revealedShown=false;
@@ -212,12 +212,20 @@ const PLAY_PAGE =
         var isLast=(k===rowLen-1);   // 줄 끝 칸은 틈 불필요(줄바꿈이 구분)
         var wrap=document.createElement('div'); wrap.className='gcellwrap'+((we[num]&&!isLast)?' wordend':'');
         var lab=document.createElement('div'); lab.className='gnum'; lab.textContent=num;
-        var inp=document.createElement('input'); inp.type='text'; inp.maxLength=1; inp.className='gcell';
+        var inp=document.createElement('input'); inp.type='text'; inp.className='gcell';
+        inp.setAttribute('autocomplete','off'); inp.setAttribute('autocorrect','off');
         inp.addEventListener('focus', function(){ var el=this; setTimeout(function(){el.select();},0); });
-        // 스페이스 → 다음 칸 이동 (공백은 칸에 입력되지 않음). 한글 조합과 충돌 없음.
-        inp.addEventListener('beforeinput', function(e){ if(e.data===' '){ e.preventDefault(); nextCell(this); } });
-        inp.addEventListener('input', function(){ if(this.value===' '){ this.value=''; nextCell(this); } });  // 혹시 공백이 들어오면 제거 후 이동
-        inp.addEventListener('keydown', function(e){                                                          // 빈 칸 백스페이스 → 이전 칸
+        // 스페이스를 누르면 다음 칸. 입력된 '값'을 직접 보고 처리 → iOS 한글에서도 안정적.
+        inp.addEventListener('input', function(){
+          var v=this.value;
+          if(/\s/.test(v)){                          // 공백(스페이스/줄바꿈) 들어옴 → 떼어내고 다음 칸
+            this.value=v.replace(/\s/g,'').charAt(0)||'';
+            nextCell(this);
+          } else if(v.length>1){                     // 한 칸에 여러 글자 → 첫 글자만 유지
+            this.value=v.charAt(0);
+          }
+        });
+        inp.addEventListener('keydown', function(e){  // 빈 칸 백스페이스 → 이전 칸 (수정 편의)
           if(e.key==='Backspace' && this.value===''){ var p=gridInputs.indexOf(this); if(p>0){ e.preventDefault(); gridInputs[p-1].focus(); } }
         });
         wrap.appendChild(lab); wrap.appendChild(inp);
