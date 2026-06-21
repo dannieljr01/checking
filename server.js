@@ -192,7 +192,7 @@ const PLAY_PAGE =
 <div id="done" class="card" style="display:none"><div class="done">
   <div class="big">✅</div><div class="who" id="dwho"></div><div>제출 완료!</div>
   <button class="btn-ghost" id="redo">답 고치기</button></div></div>
-<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v6</p>
+<p class="hint" style="text-align:center;opacity:.45;margin-top:18px">레이아웃 v7</p>
 </div>
 <script>
   var curRound=null, doneRound=null, renderedRound=null, revealedShown=false;
@@ -215,19 +215,19 @@ const PLAY_PAGE =
         var inp=document.createElement('input'); inp.type='text'; inp.className='gcell';
         inp.setAttribute('autocomplete','off'); inp.setAttribute('autocorrect','off');
         inp.addEventListener('focus', function(){ var el=this; setTimeout(function(){el.select();},0); });
-        // 스페이스를 누르면 다음 칸. 입력된 '값'을 직접 보고 처리 → iOS 한글에서도 안정적.
+        // (1) 빈 칸: 공백이 값으로 들어오면 떼고 다음 칸
         inp.addEventListener('input', function(){
           var v=this.value;
-          if(/\s/.test(v)){                          // 공백(스페이스/줄바꿈) 들어옴 → 떼어내고 다음 칸
-            this.value=v.replace(/\s/g,'').charAt(0)||'';
-            nextCell(this);
-          } else if(v.length>1){                     // 한 칸에 여러 글자 → 첫 글자만 유지
-            this.value=v.charAt(0);
-          }
+          if(/\s/.test(v)){ this.value=v.replace(/\s/g,'').charAt(0)||''; nextCell(this); }
+          else if(v.length>1){ this.value=v.charAt(0); }
         });
-        inp.addEventListener('keydown', function(e){  // 빈 칸 백스페이스 → 이전 칸 (수정 편의)
+        // (2) 글자 있는 칸: 스페이스가 공백으로 안 들어오고 조합확정에만 쓰여 input이 안 뜨므로 keydown으로 감지
+        inp.addEventListener('keydown', function(e){
+          if(e.key===' '||e.code==='Space'||e.keyCode===32){ e.preventDefault(); nextCell(this); return; }
           if(e.key==='Backspace' && this.value===''){ var p=gridInputs.indexOf(this); if(p>0){ e.preventDefault(); gridInputs[p-1].focus(); } }
         });
+        // 조합 중이라 keydown이 스페이스를 못 잡는 경우 대비 — keyup에서 한 번 더
+        inp.addEventListener('keyup', function(e){ if(e.key===' '||e.code==='Space'||e.keyCode===32){ nextCell(this); } });
         wrap.appendChild(lab); wrap.appendChild(inp);
         row.appendChild(wrap); gridInputs.push(inp);
       }
